@@ -1,0 +1,119 @@
+## https://docs.google.com/spreadsheets/d/1dDdH9icTcyXW-nwhn6KEAXRy52KVDhA4sU4DV5HesLk/edit#gid=1982194576
+
+# ユーザー
+users:
+  ## 他の人からも見れる基本情報
+  userRef: DocumentReference
+  userName: String
+  imageUrl: String?
+  sex: int
+  orderedJobsCount: int
+  acceptedJobsCount: int
+  introduceForClient: String?
+  introduceForContractor: String?
+  snsUrlList: Map<String,String>?
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  isDeleted: bool
+
+    ## 本人しか見れない機密情報
+    secretProfiles:
+      point: int
+      secretProfileRef: DocumentReference
+
+    clientJobs:
+      jobRef: DocumentReference
+      jobTitle: String
+      jobPrice: int
+      jobCategory: String
+      applicationStatus: String
+      applicationDeadline: Timestamp
+      deliveryDeadline: Timestamp
+      createdAt: Timestamp
+
+    applications:
+      applicationRef: DocumentReference
+      jobRef: DocumentReference
+      clientRef: DocumentReference
+      applicantRef: DocumentReference
+      jobTitle: String
+      jobPrice: int
+      clientName: String
+      clientImageUrl: String?
+      applicantName: String
+      applicantImageUrl: String?
+      status: String
+      createdAt: Timestamp
+      updatedAt: Timestamp
+
+    pointEvents:
+      type: String
+      point: int
+      applicationRef: DocumentReference?
+      giftRef: DocumentReference?
+      createdAt: Timestamp
+      effectiveDate: Timestamp
+
+    giftRequests:
+      type: String
+      point: int
+      status: String
+      email: String
+      giftRef: DocumentReference
+      userRef: DocumentReference
+      createdAt: Timestamp
+
+jobs:
+  jobRef: DocumentReference
+  jobTitle: String
+  jobDetail: String
+  jobCategory: String
+  jobPrice: int
+  jobStatus: String
+  clientRef: DocumentReference
+  clientName: String
+  clientImageUrl: String?
+  applicationDeadline: Timestamp
+  deliveryDeadline: Timestamp
+  createdAt: Timestamp
+  updatedAt: Timestamp
+
+    jobComments:
+      commentRef: DocumentReference
+      comment: String
+      commenterRef: DocumentReference
+      commenterName: String
+      commenterImageUrl: String?
+      createdAt: TimeStamp
+
+    applications:
+      applicationRef: DocumentReference
+      jobRef: DocumentReference
+      clientRef: DocumentReference
+      applicantRef: DocumentReference
+      jobTitle: String
+      jobPrice: int
+      clientName: String
+      clientImageUrl: String?
+      applicantName: String
+      applicantImageUrl: String?
+      status: String
+      createdAt: Timestamp
+      updatedAt: Timestamp
+
+categories:
+  name: String
+  number: int
+
+mail:
+  message: Map<String,dynamic>
+    subject: String
+    text : String
+  to: List<String>
+  delivery:  Map<String, dynamic>? // これはTriggerEmailが生成するフィールド
+
+contact:
+  userRef: DocumentReference?
+  email: String
+  contactDetail: String
+  createdAt: Timestamp

@@ -1,0 +1,23 @@
+{
+    "name": "sukimachi",
+    "short_name": "sukimachi",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#0175C2",
+    "theme_color": "#0175C2",
+    "description": "A new Flutter project.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-300.png",
+            "sizes": "300x300",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-800.png",
+            "sizes": "800x800",
+            "type": "image/png"
+        },
+    ]
+}

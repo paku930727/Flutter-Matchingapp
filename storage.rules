@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // ログインしていること
+    function isAuthenticated() {
+      return request.auth != null && request.auth.token.firebase.sign_in_provider == "google.com";
+    }
+    // idに該当するユーザであること
+    function isTheUser(id) {
+      return isAuthenticated() && request.auth.uid == id;
+    }
+    match /users/{userId}/profileImg/{fileName} {
+      allow read: if request.auth != null;
+      allow update : if isTheUser(userId);
+      allow create : if isTheUser(userId);
+    }
+  }
+}

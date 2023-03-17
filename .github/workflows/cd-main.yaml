@@ -1,0 +1,50 @@
+name: Flutter_Analyzer
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy:
+    if: contains(github.event.head_commit.message, '[リリース]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v2
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - run: flutter --version
+
+      # パッケージのダウンロード
+      - name: Download Flutter packages
+        run: flutter pub get
+
+      # -- ここまで追記部分！ -- #
+      # 解説:
+      #   ようは flutter build web をたたいても flutterがインストールされていないので動かないということ
+      #   インストールしてPATH通してパッケージダウンロードしているだけ。
+
+      # ビルド
+      - run: flutter build web --dart-define=FirebaseEnvironment=product --web-renderer html
+
+      - name: Archive artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: web
+          path: build/web
+      - name: Download artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: web
+          path: build/web
+      - name: Deploy to Firebase
+        uses: w9jds/firebase-action@v2.2.2
+        with:
+          args: deploy --project=prod --only hosting,firestore:rules
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

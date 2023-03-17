@@ -1,0 +1,264 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ログインしていること
+     function isAuthenticated() {
+        return request.auth != null && request.auth.token.firebase.sign_in_provider == "google.com";
+      }
+
+     // 管理者権限を持つユーザーであること
+    function isAdminUser(){
+      return isAuthenticated() && request.auth.token.email in ['kou.sepak@gmail.com','h.kuwabara1103@gmail.com','cheapkouhei42@gmail.com'];
+    }
+
+    // idに該当するユーザであること
+    function isTheUser(id) {
+      return isAuthenticated() && request.auth.uid == id;
+    }
+
+    // ユーザーデータのスキーマ検証
+    function checkUserSchema(user) {
+        return user.size() == 11
+        && 'userRef' in user && user.userRef is path
+        && 'userName' in user && user.userName is string
+        && 'sex' in user && user.sex is number
+        && 'orderedJobsCount' in user && user.orderedJobsCount is number
+        && 'acceptedJobsCount' in user && user.acceptedJobsCount is number
+        && 'introduceForClient' in user && user.introduceForClient is string
+        && 'introduceForContractor' in user && user.introduceForContractor is string
+        && 'createdAt' in user && user.createdAt is timestamp
+        && 'updatedAt' in user && user.updatedAt is timestamp
+        && 'snsUrlList' in user && (user.snsUrlList is map || user.snsUrlList == null)
+        && 'isDeleted' in user && user.isDeleted is bool
+    }
+
+    // 発注件数と受注件数の0を保証する。
+    function checkCreateUser(user){
+      return user.orderedJobsCount == 0
+      && user.acceptedJobsCount == 0
+      && user.isDeleted == false
+    }
+    // 変更を許可しないデータを決める。
+    function checkUpdateUser(oldUser,newUser){
+      return oldUser.userName == newUser.userName
+      && oldUser.orderedJobsCount == newUser.orderedJobsCount
+      && oldUser.acceptedJobsCount == oldUser.acceptedJobsCount
+    }
+
+    // Jobsのスキーマ検証
+    function checkJobSchema(job) {
+      return job.size() == 12
+      && 'jobRef' in job && job.jobRef is path
+      && 'jobTitle' in job && job.jobTitle is string
+      && 'jobDetail' in job && job.jobDetail is string
+      && 'jobPrice' in job && job.jobPrice is number
+      && 'jobStatus' in job && job.jobStatus is string
+      && 'clientRef' in job && job.clientRef is path
+      && 'clientName' in job && job.clientName is string
+      && 'applicationDeadline' in job && job.applicationDeadline is timestamp
+      && 'deliveryDeadline' in job && job.deliveryDeadline is timestamp
+      && 'createdAt' in job && job.createdAt is timestamp
+      && 'updatedAt' in job && job.updatedAt is timestamp
+      && 'jobCategory' in job && (job.jobCategory is string || job.jobCategory == null)
+    }
+
+    // jobのupdateはバッチ処理のためuser配下とjob配下同じルールを使う
+    function checkUpdateJobStatus(oldJob, newJob) {
+      return (newJob.jobStatus == 'PUBLIC' || newJob.jobStatus == 'CLOSED')
+      // 他のフィールドは変更がないことをチェック
+      && oldJob.jobRef == newJob.jobRef
+      && oldJob.jobTitle == newJob.jobTitle
+      && oldJob.jobDetail == newJob.jobDetail
+      && oldJob.jobPrice == newJob.jobPrice
+      && oldJob.clientRef == newJob.clientRef
+      && oldJob.clientName == newJob.clientName
+      && oldJob.applicationDeadline == newJob.applicationDeadline
+      && oldJob.deliveryDeadline == newJob.deliveryDeadline
+      && oldJob.createdAt == newJob.createdAt
+      && oldJob.jobCategory == newJob.jobCategory
+    }
+
+    // 依頼への応募のスキーマ検証
+    function checkApplicationSchema(application) {
+      return application.size() == 11
+      && 'applicationRef' in application && application.applicationRef is path
+      && 'jobRef' in application && application.jobRef is path
+      && 'clientRef' in application && application.clientRef is path
+      && 'applicantRef' in application && application.applicantRef is path
+      && 'jobTitle' in application && application.jobTitle is string
+      && 'jobPrice' in application && application.jobPrice is number
+      && 'clientName' in application && application.clientName is string
+      && 'applicantName' in application && application.applicantName is string
+      && 'status' in application && application.status is string
+      && 'createdAt' in application && application.createdAt is timestamp
+      && 'updatedAt' in application && application.updatedAt is timestamp
+    }
+
+    // 応募する依頼の期限とステータスをチェックする
+    // PUBLICかつ募集期限が過ぎていない場合のみ許可
+    function checkApplyJobStatus(application) {
+      let job = get(application.jobRef).data;
+      return job.jobStatus == 'PUBLIC'
+      && job.applicationDeadline >= request.time
+    }
+
+    // job配下のappliactionのルール
+    function checkUpdateApplicationStatus(oldApplication, newApplication) {
+      return get(resource.data.clientRef).id == request.auth.uid // 依頼の作成者かどうかをチェック
+      && (newApplication.status == 'ACCEPTED' || newApplication.status == 'DONE' || newApplication.status == 'REJECTED')
+      // 他のフィールドは変更がないことをチェック
+      && oldApplication.applicationRef == newApplication.applicationRef
+      && oldApplication.jobRef == newApplication.jobRef
+      && oldApplication.clientRef == newApplication.clientRef
+      && oldApplication.applicantRef == newApplication.applicantRef
+      && oldApplication.jobTitle == newApplication.jobTitle
+      && oldApplication.jobPrice == newApplication.jobPrice
+      && oldApplication.clientName == newApplication.clientName
+      && oldApplication.applicantName == newApplication.applicantName
+      && oldApplication.createdAt == newApplication.createdAt
+      && oldApplication.updatedAt == newApplication.updatedAt
+    }
+
+    // job配下のappliactionのルール
+    function checkReadApplication(jobId,userId) {
+      return get(/databases/$(database)/documents/jobs/$(jobId)).data.clientRef == get(/databases/$(database)/documents/users/$(userId)).data.userRef // 依頼の作成者かどうかをチェック
+    }
+
+    // 依頼が承諾orリジェクトされたら依頼の削除はできない(user配下のapplicationのルール)
+    function checkDeleteApplication(application){
+      return application.status == 'IN_REVIEW';
+    }
+
+    // ギフト申請のスキーマ検証
+    function checkGiftRequestSchema(giftRequest){
+      return giftRequest.size() == 7
+      && 'type' in giftRequest && giftRequest.type is string
+      && 'point' in giftRequest && giftRequest.point is int
+      && 'status' in giftRequest && giftRequest.status is string
+      && 'email' in giftRequest && giftRequest.email is string
+      && 'giftRef' in giftRequest && giftRequest.giftRef is path
+      && 'userRef' in giftRequest && giftRequest.userRef is path
+      && 'createdAt' in giftRequest && giftRequest.createdAt is timestamp
+    }
+
+    // GiftRequestのステータスをチェックする
+    // IN_REVIEWのみ許可
+    function checkGiftRequestStatus(giftRequest) {
+      return giftRequest.status == 'IN_REVIEW'
+    }
+
+    function checkCommentSchema(comment) {
+      return comment.size() == 5
+      && 'commentRef' in comment && comment.commentRef is path
+      && 'comment' in comment && comment.comment is string
+      && 'commenterRef' in comment && comment.commenterRef is path
+      && 'commenterName' in comment && comment.commenterName is string
+      && 'createdAt' in comment && comment.createdAt is timestamp
+    }
+
+    function checkContactSchema(contact) {
+      return contact.size() == 4
+      && 'userRef' in contact && (contact.userRef is path || contact.userRef == null)
+      && 'email' in contact && contact.email is string
+      && 'contactDetail' in contact && contact.contactDetail is string
+      && 'createdAt' in contact && contact.createdAt is timestamp
+
+    }
+
+    // 管理画面でコレクショングループを使って取得するためのルール
+    match /{path=**}/giftRequests/{giftRequestId} {
+      allow read:if isAdminUser();
+    }
+
+    // readは全員
+    // createとdeleteは管理者のみ
+    match /categories/{id} {
+        allow read:if true;
+        allow create:if isAdminUser();
+        allow delete:if isAdminUser();
+        }
+
+    // createとupdateは本人だけ
+    // readは全員
+    match /users/{userId} {
+      allow get:if true;
+      allow list:if isAdminUser();
+      allow create: if isTheUser(userId) && checkUserSchema(request.resource.data) && checkCreateUser(request.resource.data);
+      allow update:if isTheUser(userId) && checkUserSchema(request.resource.data) && checkUpdateUser(resource.data,request.resource.data);
+      	
+    // createは本人だけ可能
+    // updateはステータスの変更のみ許可
+    // deleteは作成者のみ
+        match /clientJobs/{jobId} {
+          allow read : if isTheUser(userId);
+          allow create: if isTheUser(userId) && checkJobSchema(request.resource.data);
+          allow update: if isTheUser(userId) && checkJobSchema(request.resource.data) && checkUpdateJobStatus(resource.data,request.resource.data);
+        }
+        
+        // createは本人だけ
+        // updateは禁止(functionsで触る)
+        // readは本人だけ
+        // deleteはIN_REVIEWの場合のみ
+        match /applications/{application} {
+             allow read : if isTheUser(userId) || isAdminUser();
+             allow create: if isTheUser(userId) && checkApplicationSchema(request.resource.data) && checkApplyJobStatus(request.resource.data);
+             allow delete: if isTheUser(userId) && checkDeleteApplication(resource.data);
+        }
+
+        // createは本人だけ
+        // updateは禁止(functionsで触る)
+        // deleteは禁止
+        // readは本人だけ
+        match /giftRequests/{giftRequestId} {
+            allow get : if isAdminUser();
+            allow read : if isTheUser(userId);
+            allow create: if isTheUser(userId) && checkGiftRequestSchema(request.resource.data) && checkGiftRequestStatus(request.resource.data);
+            allow update: if isAdminUser() && checkGiftRequestSchema(request.resource.data);
+        }
+
+        // readは管理者のみ
+        match /pointEvents/{pointEventId} {
+            allow read : if isAdminUser();
+        }
+
+        // 現時点ではcreateとupdateはfunctionsで行う
+        // readは本人だけ可能
+        match /secretProfiles/{secretProfileId} {
+            allow read: if isTheUser(userId);
+            }
+    }
+
+
+    // createは誰でも可能
+    // updateはステータスの変更のみ許可
+    // deleteは不可(ステータスで非公開にできる)
+    match /jobs/{jobId} {
+        allow read:if true
+        allow create: if isAuthenticated() && checkJobSchema(request.resource.data);
+        allow update: if checkJobSchema(request.resource.data) && checkUpdateJobStatus(resource.data,request.resource.data);
+        
+          // createとreadは誰でもか
+          match /comments/{commentId} {
+            allow read: if true;
+            allow create: if isAuthenticated() && checkCommentSchema(request.resource.data);
+            }
+          // createは不可
+          // updateはステータスの変更のみ許可
+          // readはjobの作成者のみか
+          // applicationIdは応募者のuserIdと同じ
+          match /applications/{applicationId} {
+            allow read : if checkReadApplication(jobId,request.auth.uid);
+            allow update: if checkUpdateApplicationStatus(resource.data,request.resource.data);
+            }
+  	}
+
+    // createは誰でも可能
+    // update、deleteは不可
+    // readは管理者のみ可能
+    match /contact/{id} {
+        allow create: if checkContactSchema(request.resource.data);
+        allow read: if isAdminUser();
+        }
+  }
+}
