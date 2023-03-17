@@ -64,7 +64,7 @@ dependencies:
   freezed: ^1.1.1
 
   #JSONのシリアル化と逆シリアル化
-  json_annotation: ^4.4.0
+  json_annotation: ^4.8.0
 
   #Firebase関連
   #firebase_core
