@@ -71,7 +71,7 @@ dependencies:
   firebase_core: ^1.14.0
 
   #firebase_analytics(アプリの使用状況とユーザー エンゲージメントについて分析できるアプリ測定ソリューションです。)
-  firebase_analytics: ^9.1.5
+  firebase_analytics: ^9.3.8
 
   #cloud_firestore(NoSQL クラウド データベースを使用して、クライアント側開発とサーバー側開発のデータを保存、同期する)
   cloud_firestore: 3.2.1
