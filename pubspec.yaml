@@ -61,7 +61,7 @@ dependencies:
   flutter_hooks: ^0.18.3
 
   #freezed
-  freezed: ^1.1.1
+  freezed: ^2.3.3
 
   #JSONのシリアル化と逆シリアル化
   json_annotation: ^4.4.0
